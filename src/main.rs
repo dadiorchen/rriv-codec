@@ -1,5 +1,4 @@
 fn main() {
-    println!("Hello, world!");
 }
 
 pub fn encode( timestamp: i64,
