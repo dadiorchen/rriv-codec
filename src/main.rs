@@ -1,3 +1,5 @@
+use std::mem;
+
 fn main() {
 }
 
@@ -24,6 +26,9 @@ pub fn encode(
         .map(|chunk| f64::from_le_bytes(chunk.try_into().unwrap()))
         .collect::<Vec<f64>>()
         .into_boxed_slice();
+    // print size of box 
+    println!("Encoded data size: {}", boxed_slice.len());
+    println!("Encoded data use space: {} bytes", mem::size_of_val(&boxed_slice));
     // Return the boxed slice
     boxed_slice
 }
@@ -39,8 +44,11 @@ mod tests {
         let tempratures = [1.0, 2.0, 3.0, 2.2122, 2.2122, 2.2122];
         let humidity = 1.0;
         let result = encode(timestamp, tempratures, humidity);
+        println!("Encoded data size: {}", result.len());
+        println!("Encoded data use space: {} bytes", mem::size_of_val(&result));
         assert_eq!(result.len(), 8); // Adjust this based on the expected length of the output
         assert_eq!([6.09957582e-315, 1.0, 2.0, 3.0, 2.2122, 2.2122, 2.2122, 1.0], result.as_ref());
+        assert_eq!(mem::size_of_val(&result), 16); 
 //        assert_eq!(result.as_ref()[0], 210f64);
 //        assert_eq!(result.as_ref()[1..9], []);
 
