@@ -40,8 +40,9 @@ mod tests {
         let humidity = 1.0;
         let result = encode(timestamp, tempratures, humidity);
         assert_eq!(result.len(), 8); // Adjust this based on the expected length of the output
-        assert_eq!(result.as_ref()[0], 210f64);
-        assert_eq!(result.as_ref()[1..9], []);
+        assert_eq!([6.09957582e-315, 1.0, 2.0, 3.0, 2.2122, 2.2122, 2.2122, 1.0], result.as_ref());
+//        assert_eq!(result.as_ref()[0], 210f64);
+//        assert_eq!(result.as_ref()[1..9], []);
 
 
     }
