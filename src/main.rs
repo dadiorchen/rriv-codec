@@ -10,7 +10,7 @@ pub fn encode(
     // The temprature is a 8 element array, every one is 64-bit float
     temperature: [f64; 6],
     // The humidity is a 64-bit float
-    humidity: f64,
+    humidity: i8,
 ) -> Box<[f64]> {
     // Create a buffer to hold the encoded data
     let mut buffer = Vec::new();
@@ -21,7 +21,7 @@ pub fn encode(
         buffer.extend_from_slice(&temp.to_le_bytes());
     }
     // Encode the humidity as a 64-bit float
-    buffer.extend_from_slice(&humidity.to_le_bytes());
+    buffer.extend_from_slice(&(humidity as f64).to_le_bytes());
     // Convert the buffer to a Box<[f64]>
     let boxed_slice: Box<[f64]> = buffer
         .chunks_exact(8)
@@ -40,7 +40,7 @@ pub fn encode(
 pub struct DecodedData {
     pub timestamp: i64,
     pub temperature: [f64; 6],
-    pub humidity: f64,
+    pub humidity: i8,
 }
 
 pub fn decode(data: &[f64]) -> DecodedData {
@@ -58,6 +58,9 @@ pub fn decode(data: &[f64]) -> DecodedData {
     
     // Decode the humidity from the last element
     let humidity = data[7];
+
+    // convert humidity to i8
+    let humidity = humidity as i8;
     
     DecodedData {
         timestamp,
@@ -85,12 +88,12 @@ mod tests {
         println!("Parsed timestamp: {}", datetime_parsed.timestamp());
         println!("Parsed timestamp in text: {}", datetime_parsed.to_rfc3339());
         let temperatures = [24.4, 24.5, 24.9, 25.9, 28.1, 30.2];
-        let humidity = 1.0;
+        let humidity = 10;
         let result = encode(timestamp_i64, temperatures, humidity);
         println!("Encoded data size: {}", result.len());
         println!("Encoded data use space: {} bytes", mem::size_of_val(&result));
         assert_eq!(result.len(), 8); // Adjust this based on the expected length of the output
-        assert_eq!([8.380151764e-315, 24.4, 24.5, 24.9, 25.9, 28.1, 30.2, 1.0], result.as_ref());
+        assert_eq!([8.380151764e-315, 24.4, 24.5, 24.9, 25.9, 28.1, 30.2, 10.0], result.as_ref());
         assert_eq!(mem::size_of_val(&result), 16); 
 
         // decode the result, the result is a struct with timestamp, temperature and humidity
