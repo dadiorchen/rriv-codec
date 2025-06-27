@@ -1,4 +1,6 @@
+extern crate chrono;
 use std::mem;
+use chrono::prelude::*;
 
 fn main() {
 }
@@ -71,6 +73,25 @@ mod tests {
 
     #[test]
     fn test_encode() {
+        let time = std::time::SystemTime::now();
+        println!("Now: {:?}", time);
+        // get the unix timestamp
+        let timestamp_unix = time
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("Time went backwards")
+            .as_secs() as i64;
+        println!("Timestamp: {}", timestamp_unix);
+        let time_str = "2023-10-01T12:00:00Z";
+        let datetime = DateTime::parse_from_rfc3339(time_str).expect("Failed to parse date");
+        // parse the unix timestamp and convert to DateTime
+        let datetime_parsed = DateTime::<Utc>::from_utc(
+            datetime.naive_utc(),
+            Utc,
+        );
+        println!("Parsed datetime: {}", datetime);
+        println!("Unix timestamp: {}", datetime.timestamp());
+        println!("Parsed timestamp: {}", datetime_parsed.timestamp());
+        println!("Parsed timestamp in text: {}", datetime_parsed.to_rfc3339());
         let timestamp = 1234567890;
         let tempratures = [1.0, 2.0, 3.0, 2.2122, 2.2122, 2.2122];
         let humidity = 1.0;
