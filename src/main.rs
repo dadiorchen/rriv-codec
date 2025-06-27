@@ -33,6 +33,37 @@ pub fn encode(
     boxed_slice
 }
 
+// DecodedData struct to hold the decoded data
+#[derive(Debug, PartialEq)]
+pub struct DecodedData {
+    pub timestamp: i64,
+    pub temperature: [f64; 6],
+    pub humidity: f64,
+}
+
+pub fn decode(data: &[f64]) -> DecodedData {
+    // Ensure the data has the expected length
+    assert!(data.len() >= 8, "Data must contain at least 8 elements");
+    
+    // Decode the timestamp from the first 8 bytes
+    let timestamp = i64::from_le_bytes
+        (data[0].to_bits().to_le_bytes());
+    
+    // Decode the temperature from the next 6 elements
+    let temperature = [
+        data[1], data[2], data[3], data[4], data[5], data[6]
+    ];
+    
+    // Decode the humidity from the last element
+    let humidity = data[7];
+    
+    DecodedData {
+        timestamp,
+        temperature,
+        humidity,
+    }
+}
+
 // write test
 #[cfg(test)]
 mod tests {
@@ -49,8 +80,12 @@ mod tests {
         assert_eq!(result.len(), 8); // Adjust this based on the expected length of the output
         assert_eq!([6.09957582e-315, 1.0, 2.0, 3.0, 2.2122, 2.2122, 2.2122, 1.0], result.as_ref());
         assert_eq!(mem::size_of_val(&result), 16); 
-//        assert_eq!(result.as_ref()[0], 210f64);
-//        assert_eq!(result.as_ref()[1..9], []);
+
+        // decode the result, the result is a struct with timestamp, temperature and humidity
+        let result_decoded = decode(&result);
+        assert_eq!(result_decoded.timestamp, timestamp);
+        assert_eq!(result_decoded.temperature, tempratures);
+        assert_eq!(result_decoded.humidity, humidity);
 
 
     }
