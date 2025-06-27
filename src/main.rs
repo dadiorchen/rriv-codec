@@ -84,19 +84,19 @@ mod tests {
         println!("Unix timestamp: {}", datetime.timestamp());
         println!("Parsed timestamp: {}", datetime_parsed.timestamp());
         println!("Parsed timestamp in text: {}", datetime_parsed.to_rfc3339());
-        let tempratures = [1.0, 2.0, 3.0, 2.2122, 2.2122, 2.2122];
+        let temperatures = [24.4, 24.5, 24.9, 25.9, 28.1, 30.2];
         let humidity = 1.0;
-        let result = encode(timestamp_i64, tempratures, humidity);
+        let result = encode(timestamp_i64, temperatures, humidity);
         println!("Encoded data size: {}", result.len());
         println!("Encoded data use space: {} bytes", mem::size_of_val(&result));
         assert_eq!(result.len(), 8); // Adjust this based on the expected length of the output
-        assert_eq!([8.380151764e-315, 1.0, 2.0, 3.0, 2.2122, 2.2122, 2.2122, 1.0], result.as_ref());
+        assert_eq!([8.380151764e-315, 24.4, 24.5, 24.9, 25.9, 28.1, 30.2, 1.0], result.as_ref());
         assert_eq!(mem::size_of_val(&result), 16); 
 
         // decode the result, the result is a struct with timestamp, temperature and humidity
         let result_decoded = decode(&result);
         assert_eq!(result_decoded.timestamp, timestamp_i64);
-        assert_eq!(result_decoded.temperature, tempratures);
+        assert_eq!(result_decoded.temperature, temperatures);
         assert_eq!(result_decoded.humidity, humidity);
 
 
