@@ -37,11 +37,14 @@ fn encode_timestamp(timestamp: i64) -> Bits {
     // cut to i32 
     let offset = offset as i32;
     // shift the offset to fit in 30 bits
+    binary_dump(offset);
     let offset_shifted = offset << 2; // Shift left by 2 bits to make space for the sign bit
+    binary_dump(offset_shifted);
     println!("Offset from 2025: {}", offset);
     println!("Offset shifted: {}", offset_shifted);
-    // convert to bits
-    println!("hex dump: {:X?}", offset_shifted.to_le_bytes());
+    println!("hex dump : {:X?}", offset.to_le_bytes());
+    hex_dump::hex_dump(&offset.to_le_bytes());
+    println!("hex dump shifted: {:X?}", offset_shifted.to_le_bytes());
     hex_dump::hex_dump(&offset_shifted.to_le_bytes());
     Bits {
         data: Box::new(offset_shifted.to_le_bytes()),
