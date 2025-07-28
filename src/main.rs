@@ -6,6 +6,51 @@ use chrono::{DateTime, Utc, TimeZone};
 fn main() {
 }
 
+
+struct Bits {
+    data: Box<[u8]>,
+    len: u8,
+}
+
+fn concat_bits(bits: &[Bits]) -> Bits {
+    // Calculate the total length of the concatenated bits
+    let total_len = bits.iter().map(|b| b.data.len()).sum::<usize>();
+    let mut concatenated_data = Vec::with_capacity(total_len);
+    
+    // Concatenate the data from each Bits struct
+    for bit in bits {
+        concatenated_data.extend_from_slice(&bit.data);
+    }
+    
+    // Create a Bits struct with the concatenated data and a len
+    Bits {
+        data: concatenated_data.into_boxed_slice(),
+        len: 0, // Length is not used in this example, but can be set if needed
+    }
+}
+
+fn encode_timestamp(timestamp: i64) -> Bits {
+    // Unix timestamp for 2025-01-01T00:00:00Z
+    let unix_of_2025 = 1735689600;  
+    // Calculate the offset from the Unix timestamp
+    let offset = timestamp - unix_of_2025;
+    println!("Offset from 2025: {}", offset);
+    // Convert the offset to a 30-bit representation
+    let mut bits = vec![0; 4]; // 30 bits can fit in 4 bytes
+    bits[0] = (offset & 0xFF) as u8;
+    bits[1] = ((offset >> 8) & 0xFF) as u8;
+    bits[2] = ((offset >> 16) & 0xFF) as u8;
+    bits[3] = ((offset >> 24) & 0xFF) as u8;
+    println!("Encoded bits: {:?}", bits);
+    hex_dump::hex_dump(&bits);
+    // Create a Bits struct with the data and a len
+    Bits {
+        data: bits.into_boxed_slice(),
+        len: 30, // Length of the bits
+    }
+}
+
+
 pub fn encode( 
     timestamp: i64,
     // The temprature is a 8 element array, every one is 64-bit float
@@ -34,6 +79,39 @@ pub fn encode(
     println!("Encoded data use space: {} bytes", mem::size_of_val(&boxed_slice));
     // Return the boxed slice
     boxed_slice
+}
+
+/*
+ * |------30------|--------------|----------------|----------------|
+ *     timestamp
+ *     offset of 
+ *     2025 year
+ *
+ * */
+pub fn encode_v1(
+    timestamp: i64,
+    // The temprature is a 8 element array, every one is 64-bit float
+    temperature: [f64; 6],
+    // The humidity is a 64-bit float
+    humidity: i8,
+) -> Box<[u8]> {
+
+    let year_bits = encode_timestamp(timestamp);
+
+    let bits = concat_bits(&[
+        year_bits,
+        Bits {
+            data: Box::new([0; 8]),
+            len: 0,
+        },
+        Bits {
+            data: Box::new(timestamp.to_le_bytes()),
+            len: 0,
+        },
+    ]);
+
+    let result = bits.data;
+    result
 }
 
 // DecodedData struct to hold the decoded data
@@ -140,6 +218,44 @@ mod tests {
         assert_eq!(result_decoded.timestamp, timestamp_i64);
         assert_eq!(result_decoded.temperature, temperatures);
         assert_eq!(result_decoded.humidity, humidity);
+
+
+    }
+
+    #[test]
+    fn test_encode_timestamp() {
+        let time_str = "2025-07-28T00:00:00+00:00";
+        let datetime = DateTime::parse_from_rfc3339(time_str).expect("Failed to parse date");
+        // use i64 to store the timestamp
+        let timestamp_i64 = datetime.timestamp();
+        let bits = encode_timestamp(timestamp_i64);
+        println!("Encoded bits: {:?}", bits.data);
+        assert_eq!(bits.data.len(), 4); // 30 bits can fit in 4 bytes
+        assert_eq!(bits.len, 30); // Length of the bits
+        assert_eq!(bits.data.as_ref(), &[0, 0x38, 0x12, 0x01]); // Adjust this based on the expected
+    }
+
+    #[test]
+    fn test_encode_v1() {
+        let time_str = "2023-10-01T12:00:00+00:00";
+        let datetime = DateTime::parse_from_rfc3339(time_str).expect("Failed to parse date");
+        // use i64 to store the timestamp
+        let timestamp_i64 = datetime.timestamp();
+        // create date from timestamp
+        let datetime_parsed = DateTime::<Utc>::from_timestamp(timestamp_i64, 0)
+            .expect("Failed to create date from timestamp");
+        println!("Parsed datetime: {}", datetime);
+        println!("Unix timestamp: {}", datetime.timestamp());
+        println!("Parsed timestamp: {}", datetime_parsed.timestamp());
+        println!("Parsed timestamp in text: {}", datetime_parsed.to_rfc3339());
+        let temperatures = [24.4, 24.5, 24.9, 25.9, 28.1, 30.2];
+        let humidity = 10;
+        let result = encode_v1(timestamp_i64, temperatures, humidity);
+        println!("Encoded data size: {}", result.len());
+        println!("Encoded data use space: {} bytes", mem::size_of_val(&result));
+        hex_dump::hex_dump(&result);
+        //assert_eq!(result.len(), 8); // Adjust this based on the expected length of the output
+        assert_eq!([0, 0, 0, 0, 0x65, 0x19, 0x5F, 0x40, 0, 0, 0x9, 0x88, 0, 0, 0x9, 0x92, 0, 0, 9, 0xBA, 0, 0], result.as_ref());
 
 
     }
