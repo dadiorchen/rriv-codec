@@ -34,18 +34,17 @@ fn encode_timestamp(timestamp: i64) -> Bits {
     let unix_of_2025 = 1735689600;  
     // Calculate the offset from the Unix timestamp
     let offset = timestamp - unix_of_2025;
+    // cut to i32 
+    let offset = offset as i32;
+    // shift the offset to fit in 30 bits
+    let offset_shifted = offset << 2; // Shift left by 2 bits to make space for the sign bit
     println!("Offset from 2025: {}", offset);
-    // Convert the offset to a 30-bit representation
-    let mut bits = vec![0; 4]; // 30 bits can fit in 4 bytes
-    bits[0] = (offset & 0xFF) as u8;
-    bits[1] = ((offset >> 8) & 0xFF) as u8;
-    bits[2] = ((offset >> 16) & 0xFF) as u8;
-    bits[3] = ((offset >> 24) & 0xFF) as u8;
-    println!("Encoded bits: {:?}", bits);
-    hex_dump::hex_dump(&bits);
-    // Create a Bits struct with the data and a len
+    println!("Offset shifted: {}", offset_shifted);
+    // convert to bits
+    println!("hex dump: {:X?}", offset_shifted.to_le_bytes());
+    hex_dump::hex_dump(&offset_shifted.to_le_bytes());
     Bits {
-        data: bits.into_boxed_slice(),
+        data: Box::new(offset_shifted.to_le_bytes()),
         len: 30, // Length of the bits
     }
 }
@@ -232,7 +231,7 @@ mod tests {
         println!("Encoded bits: {:?}", bits.data);
         assert_eq!(bits.data.len(), 4); // 30 bits can fit in 4 bytes
         assert_eq!(bits.len, 30); // Length of the bits
-        assert_eq!(bits.data.as_ref(), &[0, 0x38, 0x12, 0x01]); // Adjust this based on the expected
+        assert_eq!(bits.data.as_ref(), &[0, 0xe0, 0x48, 0x04]); // Adjust this based on the expected
     }
 
     #[test]
