@@ -1,6 +1,7 @@
 extern crate chrono;
 use std::mem;
-use chrono::prelude::*;
+mod hex_dump;
+use chrono::{DateTime, Utc, TimeZone};
 
 fn main() {
 }
@@ -57,10 +58,10 @@ pub fn decode(data: &[f64]) -> DecodedData {
     ];
     
     // Decode the humidity from the last element
-    let humidity = data[7];
+    let _humidity = data[7];
 
     // convert humidity to i8
-    let humidity = humidity as i8;
+    let humidity = _humidity as i8;
     
     DecodedData {
         timestamp,
@@ -126,6 +127,12 @@ mod tests {
         println!("length of result: {}", result.len());
         println!("Total size: {}", total);
         assert_eq!(total, 64);
+        // convert to hex
+        let result_u8 = result
+            .iter()
+            .flat_map(|&x| x.to_le_bytes())
+            .collect::<Vec<u8>>();
+        hex_dump::hex_dump(&result_u8);
 
 
         // decode the result, the result is a struct with timestamp, temperature and humidity
@@ -163,6 +170,7 @@ mod tests {
         let total = result.len() * mem::size_of::<u8>();
         println!("Total size: {}", total);
         assert_eq!(total, 22);
+        hex_dump::hex_dump(&result);
 
         // decode the result, the result is a struct with timestamp, temperature and humidity
 //        let result_decoded = decode(&result);
