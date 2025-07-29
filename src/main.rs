@@ -12,6 +12,20 @@ struct Bits {
     len: u8,
 }
 
+impl Bits {
+    fn new(data: Box<[u8]>, len: u8) -> Self {
+        Bits { data, len }
+    }
+
+    // to string representation
+    fn to_string(&self) -> String {
+        self.data.iter()
+            .map(|byte| format!("{:08b}", byte))
+            .collect::<Vec<String>>()
+            .join(" ")
+    }
+}
+
 fn concat_bits(bits: &[Bits]) -> Bits {
     // Calculate the total length of the concatenated bits
     let total_len = bits.iter().map(|b| b.data.len()).sum::<usize>();
@@ -29,6 +43,9 @@ fn concat_bits(bits: &[Bits]) -> Bits {
     }
 }
 
+// offset from 2025-01-01T00:00:00Z, 
+// 30 bits to store the offset
+// this means we can store timestamps from 2025-01-01T00:00:00Z to 2055-01-01T00:00:00Z
 fn encode_timestamp(timestamp: i64) -> Bits {
     // Unix timestamp for 2025-01-01T00:00:00Z
     let unix_of_2025 = 1735689600;  
@@ -37,9 +54,9 @@ fn encode_timestamp(timestamp: i64) -> Bits {
     // cut to i32 
     let offset = offset as i32;
     // shift the offset to fit in 30 bits
-    binary_dump(offset);
-    let offset_shifted = offset << 2; // Shift left by 2 bits to make space for the sign bit
-    binary_dump(offset_shifted);
+    println!("Offset        : {:032b}, {}", offset, offset);
+    let offset_shifted = offset << 2; 
+    println!("Offset shifted: {:032b}, {}", offset_shifted, offset_shifted);
     println!("Offset from 2025: {}", offset);
     println!("Offset shifted: {}", offset_shifted);
     println!("hex dump : {:X?}", offset.to_le_bytes());
@@ -50,6 +67,21 @@ fn encode_timestamp(timestamp: i64) -> Bits {
         data: Box::new(offset_shifted.to_le_bytes()),
         len: 30, // Length of the bits
     }
+}
+
+fn decode_timestamp(bits: &Bits) -> i64 {
+    // Ensure the bits are 30 bits long
+    assert!(bits.len == 30, "Bits must be 30 bits long");
+    
+    // Convert the bits to an i32
+    let offset = i32::from_le_bytes(bits.data[0..4].try_into().unwrap());
+    // Shift back to get the original offset
+    let offset = offset >> 2;
+    
+    // Unix timestamp for 2025-01-01T00:00:00Z
+    let unix_of_2025 = 1735689600;  
+    // Calculate the original timestamp
+    unix_of_2025 + offset as i64
 }
 
 
@@ -232,9 +264,14 @@ mod tests {
         let timestamp_i64 = datetime.timestamp();
         let bits = encode_timestamp(timestamp_i64);
         println!("Encoded bits: {:?}", bits.data);
+        println!("Print bits as string: {}", bits.to_string());
         assert_eq!(bits.data.len(), 4); // 30 bits can fit in 4 bytes
         assert_eq!(bits.len, 30); // Length of the bits
-        assert_eq!(bits.data.as_ref(), &[0, 0xe0, 0x48, 0x04]); // Adjust this based on the expected
+        assert_eq!(bits.data.as_ref(), &[0, 0xe0, 0x48, 0x04]); 
+        // Decode the timestamp back
+        let decoded_timestamp = decode_timestamp(&bits);
+        println!("Decoded timestamp: {}", decoded_timestamp);
+        assert_eq!(decoded_timestamp, timestamp_i64);
     }
 
     #[test]
