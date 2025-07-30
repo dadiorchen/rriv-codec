@@ -1,8 +1,9 @@
 extern crate chrono;use std::mem;
 use chrono::{DateTime, Utc, TimeZone};
 use std::convert::TryInto;
-use crate::encode_humidity::encode_humidity;
-use crate::encode_temperature::encode_temperature;
+use crate::encode_humidity::{decode_humidity, encode_humidity};
+use crate::encode_temperature::{decode_temperature, encode_temperature};
+use crate::encode_timestamp::decode_timestamp;
 use crate::{bits::Bits, encode_timestamp};
 use crate::utils::{getBits32, hex_dump};
 
@@ -66,7 +67,7 @@ pub fn encode_v1(
     humidity: i8,
 ) -> Box<[u8]> {
 
-    let year_bits = encode_timestamp(timestamp);
+    let timestamp_bits = encode_timestamp(timestamp);
     let temperature_bits = temperature
         .iter()
         .map(|&temp| {
@@ -75,20 +76,50 @@ pub fn encode_v1(
         .collect::<Vec<Bits>>();
     let humidity_bits = encode_humidity(humidity as u8);
 
-    let bits_to_concat = std::iter::once(year_bits)
+    let bits_to_concat = std::iter::once(timestamp_bits)
         .chain(temperature_bits.into_iter())
         .chain(std::iter::once(humidity_bits));
     let bits = concat_bits(&bits_to_concat.collect::<Vec<Bits>>());
 
-    let result = bits.data;
+    let result = bits.to_vec()
+        .into_boxed_slice();
     result
 }
+
+pub fn decode_v1(data: &[u8]) -> DecodedData {
+    // Ensure the data has the expected length
+    let bits = Bits::from_vec(data.to_vec());
+
+    // Decode the timestamp from the first 30 bits
+    let timestamp_bits = bits.sub(0, 30);
+
+    let timestamp = decode_timestamp(&timestamp_bits);
+
+    let mut temperatures = [0.0; 6];
+    for i in 0..6 {
+        // Decode the temperature from the next 6 * 4 bits
+        let temp_bits = bits.sub(30 + i * 11, 30 + (i + 1) * 11);
+        let temp = decode_temperature(temp_bits);
+        temperatures[i] = temp;
+    }
+
+    let humidity_bits = bits.sub(30 + 6* 11, 30 + 6 * 11 + 7);
+
+    let humidity = decode_humidity(&humidity_bits);
+
+    DecodedData {
+        timestamp,
+        temperatures,
+        humidity: humidity as i8,
+    }
+}
+
 
 // DecodedData struct to hold the decoded data
 #[derive(Debug, PartialEq)]
 pub struct DecodedData {
     pub timestamp: i64,
-    pub temperature: [f64; 6],
+    pub temperatures: [f64; 6],
     pub humidity: i8,
 }
 
@@ -113,7 +144,7 @@ pub fn decode(data: &[f64]) -> DecodedData {
     
     DecodedData {
         timestamp,
-        temperature,
+        temperatures: temperature,
         humidity,
     }
 }
@@ -186,7 +217,7 @@ mod tests {
         // decode the result, the result is a struct with timestamp, temperature and humidity
         let result_decoded = decode(&result);
         assert_eq!(result_decoded.timestamp, timestamp_i64);
-        assert_eq!(result_decoded.temperature, temperatures);
+        assert_eq!(result_decoded.temperatures, temperatures);
         assert_eq!(result_decoded.humidity, humidity);
 
 
@@ -195,26 +226,28 @@ mod tests {
 
     #[test]
     fn test_encode_v1() {
-        let time_str = "2023-10-01T12:00:00+00:00";
+        let time_str = "2025-07-28T00:00:00+00:00";
         let datetime = DateTime::parse_from_rfc3339(time_str).expect("Failed to parse date");
         // use i64 to store the timestamp
         let timestamp_i64 = datetime.timestamp();
         // create date from timestamp
         let datetime_parsed = DateTime::<Utc>::from_timestamp(timestamp_i64, 0)
             .expect("Failed to create date from timestamp");
-        println!("Parsed datetime: {}", datetime);
-        println!("Unix timestamp: {}", datetime.timestamp());
-        println!("Parsed timestamp: {}", datetime_parsed.timestamp());
-        println!("Parsed timestamp in text: {}", datetime_parsed.to_rfc3339());
         let temperatures = [24.4, 24.5, 24.9, 25.9, 28.1, 30.2];
         let humidity = 10;
+
         let result = encode_v1(timestamp_i64, temperatures, humidity);
         println!("Encoded data size: {}", result.len());
+        assert_eq!(result.len(), 13); 
         println!("Encoded data use space: {} bytes", mem::size_of_val(&result));
+        assert_eq!(mem::size_of_val(&result), 16);
         hex_dump(&result);
-        //assert_eq!(result.len(), 8); // Adjust this based on the expected length of the output
-        assert_eq!([0, 0, 0, 0, 0x65, 0x19, 0x5F, 0x40, 0, 0, 0x9, 0x88, 0, 0, 0x9, 0x92, 0, 0, 9, 0xBA, 0, 0], result.as_ref());
 
+        // decode 
+        let decoded = decode_v1(&result);
+        assert_eq!(decoded.timestamp, timestamp_i64);
+        assert_eq!(decoded.temperatures, temperatures);
+        assert_eq!(decoded.humidity, humidity);
 
     }
 
