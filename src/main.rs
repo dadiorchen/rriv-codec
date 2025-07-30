@@ -12,6 +12,8 @@ mod utils;
 mod encode_timestamp;
 use encode_timestamp::{encode_timestamp, decode_timestamp};
 
+mod encode_humidity;
+
 fn main() {
 }
 
