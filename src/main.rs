@@ -1,30 +1,16 @@
-extern crate chrono;
-use std::mem;
+extern crate chrono;use std::mem;
 mod hex_dump;
 use chrono::{DateTime, Utc, TimeZone};
+
+mod encode_temperature;
+
+mod bits;
+use bits::Bits;
 
 fn main() {
 }
 
 
-struct Bits {
-    data: Box<[u8]>,
-    len: u8,
-}
-
-impl Bits {
-    fn new(data: Box<[u8]>, len: u8) -> Self {
-        Bits { data, len }
-    }
-
-    // to string representation
-    fn to_string(&self) -> String {
-        self.data.iter()
-            .map(|byte| format!("{:08b}", byte))
-            .collect::<Vec<String>>()
-            .join(" ")
-    }
-}
 
 fn concat_bits(bits: &[Bits]) -> Bits {
     // Calculate the total length of the concatenated bits
