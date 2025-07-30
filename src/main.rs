@@ -7,10 +7,10 @@ mod encode_temperature;
 mod bits;
 use bits::Bits;
 
+mod utils;
+
 fn main() {
 }
-
-
 
 fn concat_bits(bits: &[Bits]) -> Bits {
     // Calculate the total length of the concatenated bits
@@ -25,7 +25,6 @@ fn concat_bits(bits: &[Bits]) -> Bits {
     // Create a Bits struct with the concatenated data and a len
     Bits {
         data: concatenated_data.into_boxed_slice(),
-        len: 0, // Length is not used in this example, but can be set if needed
     }
 }
 
@@ -51,13 +50,12 @@ fn encode_timestamp(timestamp: i64) -> Bits {
     hex_dump::hex_dump(&offset_shifted.to_le_bytes());
     Bits {
         data: Box::new(offset_shifted.to_le_bytes()),
-        len: 30, // Length of the bits
     }
 }
 
 fn decode_timestamp(bits: &Bits) -> i64 {
     // Ensure the bits are 30 bits long
-    assert!(bits.len == 30, "Bits must be 30 bits long");
+    assert!(bits.len() == 30, "Bits must be 30 bits long");
     
     // Convert the bits to an i32
     let offset = i32::from_le_bytes(bits.data[0..4].try_into().unwrap());
@@ -122,11 +120,9 @@ pub fn encode_v1(
         year_bits,
         Bits {
             data: Box::new([0; 8]),
-            len: 0,
         },
         Bits {
             data: Box::new(timestamp.to_le_bytes()),
-            len: 0,
         },
     ]);
 
@@ -252,7 +248,7 @@ mod tests {
         println!("Encoded bits: {:?}", bits.data);
         println!("Print bits as string: {}", bits.to_string());
         assert_eq!(bits.data.len(), 4); // 30 bits can fit in 4 bytes
-        assert_eq!(bits.len, 30); // Length of the bits
+        assert_eq!(bits.len(), 30); // Length of the bits
         assert_eq!(bits.data.as_ref(), &[0, 0xe0, 0x48, 0x04]); 
         // Decode the timestamp back
         let decoded_timestamp = decode_timestamp(&bits);
